@@ -1,35 +1,34 @@
 package com.company;
 
-import com.sun.javafx.image.impl.IntArgb;
-
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 
 public class Main {
+    public static double[][] inputs;
+    public static double[][] outputs;
 
-    public static double[][] inputs = new double[][]{
-            new double[]{1, 2, 3},
-            new double[]{2, 3, 4},
-            new double[]{4, 5, 6},
-            new double[]{8, 9, 10}
-    };
 
     public static void main(String[] args) {
         Random random = new Random();
-        // write your code here
+        try {
+            inputs = getInputData("inputs.txt");
+            outputs = getOutputData("outputs.txt");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         EvolutionController controller = new EvolutionController(3, 2, 150, .1);
         for (int i = 0; i < 50; i++) {
-            if (i % 500 == 0) {
+            if (i % 50 == 0) {
                 System.out.println("step " + i);
             }
             for (NetworkWrapper wrapper : controller.networks) {
-                List<HashMap<Integer, Double>> outputs = new ArrayList<>();
+                List<HashMap<Integer, Double>> cOutputs = new ArrayList<>();
                 for (double[] input : inputs) {
-                    outputs.add(wrapper.network.getOutPuts(input));
+                    cOutputs.add(wrapper.network.getOutPuts(input));
                 }
-                wrapper.setFitness(fitnessFunction(outputs));
+                wrapper.setFitness(fitnessFunction(cOutputs, outputs));
             }
             controller.stepForward();
         }
@@ -38,11 +37,11 @@ public class Main {
         Species max = new Species(0);
         for (Species specie : controller.species) {
             for (NetworkWrapper wrapper : controller.networks) {
-                List<HashMap<Integer, Double>> outputs = new ArrayList<>();
+                List<HashMap<Integer, Double>> cOutputs = new ArrayList<>();
                 for (double[] input : inputs) {
-                    outputs.add(wrapper.network.getOutPuts(input));
+                    cOutputs.add(wrapper.network.getOutPuts(input));
                 }
-                wrapper.setFitness(fitnessFunction(outputs));
+                wrapper.setFitness(fitnessFunction(cOutputs, outputs));
             }
             if (specie.representative.getFitness() > maxFit) {
                 maxFit = specie.representative.getFitness();
@@ -50,32 +49,66 @@ public class Main {
             }
             s++;
         }
-        for (int node : max.representative.network.nodes) {
-            System.out.print(node + " : ");
-        }
-        System.out.println();
         for (double[] input : inputs) {
             HashMap<Integer, Double> outputs = max.representative.network.getOutPuts(input);
             System.out.println("is : " + outputs.get(0) + " : " + outputs.get(1));
         }
-        try {
-            neuralNetToFile(max.representative.network, "network.txt");
-            NeuralNet n = fileToNeuralNet("network.txt");
-            for (double[] input : inputs) {
-                HashMap<Integer, Double> outputs = n.getOutPuts(input);
-                System.out.println("is : " + outputs.get(0) + " : " + outputs.get(1));
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+//        try {
+//            neuralNetToFile(max.representative.network, "network.txt");
+//            NeuralNet n = fileToNeuralNet("network.txt");
+//            for (double[] input : inputs) {
+//                HashMap<Integer, Double> outputs = n.getOutPuts(input);
+//                System.out.println("is : " + outputs.get(0) + " : " + outputs.get(1));
+//            }
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
     }
 
+    public static double[][] getInputData(String file) throws IOException{
+        File netFile = new File(file);
+        Scanner scanner = new Scanner(netFile);
+        int numInputs = Integer.parseInt(scanner.nextLine());
+        int dataTotal = Integer.parseInt(scanner.nextLine());
+        double[][] data = new double[dataTotal][numInputs];
+        int i = 0;
+        while (scanner.hasNextLine()) {
+            double[] input = new double[numInputs];
+            String[] cData = scanner.nextLine().split(" ");
+            for(int j = 0; j < cData.length; j++) {
+                input[j] = Double.parseDouble(cData[j]);
+            }
+            data[i] = input;
+            i++;
+        }
+        return data;
+    }
+    public static double[][] getOutputData(String file) throws IOException{
+        File netFile = new File(file);
+        Scanner scanner = new Scanner(netFile);
+        int numOutputs = Integer.parseInt(scanner.nextLine());
+        int dataTotal = Integer.parseInt(scanner.nextLine());
+        double[][] data = new double[dataTotal][numOutputs];
+        int i = 0;
+        while (scanner.hasNextLine()) {
+            double[] input = new double[numOutputs];
+            String[] cData = scanner.nextLine().split(" ");
+            for(int j = 0; j < cData.length; j++) {
+                input[j] = Double.parseDouble(cData[j]);
+            }
+            data[i] = input;
+            i++;
+        }
+        return data;
+    }
 
-    public static double fitnessFunction(List<HashMap<Integer, Double>> outputs) {
+    public static double fitnessFunction(List<HashMap<Integer, Double>> outputs, double[][] expected) {
         double out = 0;
+        int i = 0;
         for (HashMap<Integer, Double> output : outputs) {
-            out += 2 - Math.abs(1 - output.get(0));
-            out += 2 - Math.abs(1 + output.get(1));
+            for(int key : output.keySet()) {
+                out += 2 - Math.abs(expected[i][key] - output.get(key));
+            }
         }
         return out;
     }
